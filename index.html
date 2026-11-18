@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #f6f7f9;
+    color: #1f2937;
+    padding: 24px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  header { margin-bottom: 24px; }
+  header h1 { font-size: 24px; font-weight: 700; }
+  header p { color: #6b7280; font-size: 14px; margin-top: 4px; }
+  .note {
+    font-size: 12px; color: #9ca3af; margin-top: 6px;
+  }
+  section {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .section-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
+  }
+  h2 { font-size: 16px; font-weight: 600; }
+  .segmented { display: flex; gap: 4px; background: #f3f4f6; padding: 4px; border-radius: 8px; }
+  .segmented button {
+    border: none; background: transparent; padding: 6px 14px; font-size: 13px;
+    border-radius: 6px; cursor: pointer; color: #4b5563;
+  }
+  .segmented button.active { background: #ffffff; color: #111827; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  /* Chart */
+  #chart { width: 100%; height: 220px; }
+  .bar-label { font-size: 11px; fill: #6b7280; }
+  /* Highlights */
+  .highlights { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .highlight {
+    flex: 1 1 180px; background: #eef2ff; border-radius: 8px; padding: 14px 16px;
+  }
+  .highlight .value { font-size: 22px; font-weight: 700; color: #3730a3; }
+  .highlight .label { font-size: 12px; color: #6366f1; margin-top: 2px; }
+  .figures-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+  .figure {
+    flex: 1 1 160px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px;
+  }
+  .figure .value { font-size: 18px; font-weight: 600; }
+  .figure .label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  /* Timing list */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: #6b7280; font-weight: 500; font-size: 12px; text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; }
+  tr:last-child td { border-bottom: none; }
+  .amount { text-align: right; font-weight: 600; }
+  th.amount { text-align: right; }
+  .badge {
+    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: #ecfdf5; color: #059669;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Sales Dashboard</h1>
+    <p>Purchase trends, timing, and key figures — all on one page.</p>
+    <p class="note">All data below is sample data for demonstration only.</p>
+  </header>
+
+  <section id="section-chart">
+    <div class="section-head">
+      <h2>Purchase Trend</h2>
+      <div class="segmented" id="range-switch">
+        <button data-range="day" class="active">Day</button>
+        <button data-range="week">Week</button>
+        <button data-range="month">Month</button>
+      </div>
+    </div>
+    <svg id="chart" role="img" aria-label="Purchase trend chart"></svg>
+  </section>
+
+  <section id="section-timing">
+    <h2>Purchase Timing</h2>
+    <table id="timing-table">
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Item</th>
+          <th class="amount">Amount (RM)</th>
+        </tr>
+      </thead>
+      <tbody id="timing-body"></tbody>
+    </table>
+  </section>
+
+  <section id="section-figures">
+    <div class="section-head">
+      <h2>Key Figures</h2>
+      <span class="badge" id="figures-scope">This week</span>
+    </div>
+    <div class="highlights" id="highlights"></div>
+    <div class="figures-grid" id="figures-grid"></div>
+  </section>
+
+<script>
+// ---------- Sample data (Malaysia-based, fictional) ----------
+const purchases = [
+  { id: 1, customer: "Nurul Aisyah binti Ahmad", date: "2026-11-16", time: "10:24", item: "Teh O Ais Laut x2",   amount: 18.40 },
+  { id: 2, customer: "Wei Jian Tan",             date: "2026-11-16", time: "13:05", item: "Nasi lemak set",          amount: 12.90 },
+  { id: 3, customer: "Siti Rahimah",             date: "2026-11-17", time: "09:12", item: "Kuih raya bundle",        amount: 45.00 },
+  { id: 4, customer: "Ahmad Faizal",             date: "2026-11-17", time: "16:48", item: "Milo ais x3",             amount: 15.60 },
+  { id: 5, customer: "Priya Raman",              date: "2026-11-18", time: "11:37", item: "Roti canai family pack",  amount: 28.50 },
+  { id: 6, customer: "Lim Chee Keong",           date: "2026-11-18", time: "15:22", item: "Cendol x2",               amount: 14.00 },
+  { id: 7, customer: "Farah Nabila",             date: "2026-11-18", time: "18:03", item: "Ayam gunting set",        amount: 22.75 },
+  { id: 8, customer: "Kavitha Subra",            date: "2026-11-14", time: "12:15", item: "Mee goreng x4",           amount: 32.00 },
+  { id: 9, customer: "Hafiz Rahman",             date: "2026-11-15", time: "17:40", item: "Teh tarik x6",            amount: 24.60 },
+  { id: 10, customer: "Chong Mei Ling",          date: "2026-11-09", time: "10:50", item: "Kaya toast set x2",       amount: 19.80 },
+  { id: 11, customer: "Aiman Hakim",             date: "2026-11-05", time: "14:33", item: "Laksa Sarawak",           amount: 16.50 },
+  { id: 12, customer: "Devi Anjali",             date: "2026-10-28", time: "09:58", item: "Nasi kerabu x3",          amount: 39.00 },
+  { id: 13, customer: "Roslan bin Ismail",       date: "2026-10-21", time: "16:11", item: "Air bandung jug",         amount: 25.00 },
+];
+
+const TODAY = new Date("2026-11-18T12:00:00");
+const fmtRM = n => "RM " + n.toFixed(2);
+
+// ---------- Range definitions ----------
+function startOfWeek(d) { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+const weekStart = startOfWeek(TODAY);
+const monthStart = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
+
+const ranges = {
+  day:   { label: "Today",  filter: p => p.date === "2026-11-18" },
+  week:  { label: "This week", filter: p => new Date(p.date) >= weekStart },
+  month: { label: "This month", filter: p => new Date(p.date) >= monthStart },
+};
+
+// ---------- Chart ----------
+function drawChart(list, range) {
+  const svg = document.getElementById("chart");
+  const W = 900, H = 220, padL = 50, padB = 30, padT = 12;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+  // Bucket purchases
+  let buckets;
+  if (range === "day") {
+    // hours 9-18
+    const hours = [9,10,11,12,13,14,15,16,17,18];
+    buckets = hours.map(h => ({
+      label: h + ":00",
+      count: list.filter(p => parseInt(p.time.split(":")[0], 10) === h).length,
+      total: list.filter(p => parseInt(p.time.split(":")[0], 10) === h)
+                 .reduce((s, p) => s + p.amount, 0),
+    }));
+  } else if (range === "week") {
+    const names = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    buckets = names.map((nm, i) => {
+      const day = new Date(weekStart); day.setDate(day.getDate() + i);
+      const ds = day.toISOString().slice(0, 10);
+      const items = list.filter(p => p.date === ds);
+      return { label: nm, count: items.length, total: items.reduce((s,p) => s + p.amount, 0) };
+    });
+  } else {
+    // group by date string
+    const map = {};
+    list.forEach(p => {
+      map[p.date] = map[p.date] || { count: 0, total: 0 };
+      map[p.date].count++; map[p.date].total += p.amount;
+    });
+    const dates = Object.keys(map).sort();
+    buckets = dates.length ? dates.map(d => ({ label: d.slice(5), count: map[d].count, total: map[d].total }))
+                           : [{ label: "—", count: 0, total: 0 }];
+  }
+
+  const max = Math.max(...buckets.map(b => b.total), 1);
+  const bw = (W - padL - 20) / buckets.length;
+  const scale = (W - padL - 20) / buckets.length;
+  const barW = Math.min(scale * 0.6, 60);
+
+  let out = "";
+  // gridlines
+  for (let g = 0; g <= 4; g++) {
+    const y = padT + (H - padT - padB) * g / 4;
+    const val = (max * (4 - g) / 4).toFixed(0);
+    out += `<line x1="${padL}" y1="${y}" x2="${W - 10}" y2="${y}" stroke="#f3f4f6"/>`;
+    out += `<text x="${padL - 8}" y="${y + 4}" text-anchor="end" class="bar-label">${val}</text>`;
+  }
+  buckets.forEach((b, i) => {
+    const h = (b.total / max) * (H - padT - padB);
+    const x = padL + i * scale + (scale - barW) / 2;
+    const y = H - padB - h;
+    out += `<rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h, 2)}" rx="4" fill="#6366f1"></rect>`;
+    out += `<text x="${x + barW / 2}" y="${H - padB + 16}" text-anchor="middle" class="bar-label">${b.label}</text>`;
+    out += `<text x="${x + barW / 2}" y="${y - 5}" text-anchor="middle" class="bar-label">${b.total ? "RM" + b.total.toFixed(0) : ""}</text>`;
+  });
+  svg.innerHTML = out;
+}
+
+// ---------- Timing list ----------
+function renderTiming(list) {
+  const body = document.getElementById("timing-body");
+  const rows = [...list].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  body.innerHTML = rows.map(p => `
+    <tr>
+      <td>${p.customer}</td>
+      <td>${p.date}</td>
+      <td>${p.time}</td>
+      <td>${p.item}</td>
+      <td class="amount">${fmtRM(p.amount)}</td>
+    </tr>`).join("") || `<tr><td colspan="5" style="color:#9ca3af">No purchases in this period.</td></tr>`;
+}
+
+// ---------- Figures ----------
+function renderFigures(list, rangeLabel) {
+  const count = list.length;
+  const total = list.reduce((s, p) => s + p.amount, 0);
+  const avg = count ? total / count : 0;
+  const biggest = list.reduce((m, p) => (p.amount > (m?.amount ?? 0) ? p : m), null);
+  const busiest = busiestBucket(list);
+
+  document.getElementById("figures-scope").textContent = rangeLabel;
+
+  document.getElementById("highlights").innerHTML = `
+    <div class="highlight"><div class="value">${fmtRM(total)}</div><div class="label">Total sales amount</div></div>
+    <div class="highlight"><div class="value">${count}</div><div class="label">Number of purchases</div></div>
+    <div class="highlight"><div class="value">${fmtRM(avg)}</div><div class="label">Average per purchase</div></div>`;
+
+  document.getElementById("figures-grid").innerHTML = `
+    <div class="figure"><div class="value">${biggest ? fmtRM(biggest.amount) : "—"}</div><div class="label">Largest purchase${biggest ? " — " + biggest.item : ""}</div></div>
+    <div class="figure"><div class="value">${busiest || "—"}</div><div class="label">Busiest time slot</div></div>
+    <div class="figure"><div class="value">${list.filter(p => p.amount >= 25).length}</div><div class="label">Purchases over RM 25</div></div>`;
+}
+
+function busiestBucket(list) {
+  const map = {};
+  list.forEach(p => {
+    const h = p.time.split(":")[0] + ":00";
+    map[h] = (map[h] || 0) + 1;
+  });
+  let best = null, n = 0;
+  for (const [h, c] of Object.entries(map)) if (c > n) { n = c; best = h; }
+  return best;
+}
+
+// ---------- Wiring ----------
+function update(range) {
+  const { label, filter } = ranges[range];
+  const list = purchases.filter(filter);
+  drawChart(list, range);
+  renderFigures(list, label);
+}
+
+document.getElementById("range-switch").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-range]");
+  if (!btn) return;
+  document.querySelectorAll("#range-switch button").forEach(b => b.classList.toggle("active", b === btn));
+  update(btn.dataset.range);
+});
+
+// Initial render — timing list shows all sample purchases; chart/figures start on Day.
+renderTiming(purchases);
+update("day");
+</script>
+</body>
+</html>
